@@ -19,7 +19,14 @@ git clone https://github.com/TundraFizz/Docker-Sample-App
 docker build -t sample-app Docker-Sample-App
 
 # Modify the docker-compose.yml file to include your images
+# Note: volumes is optional, but the host folder must already exist
+#       the client folder will automatically be created in the container
 nano docker-compose.yml
+
+  my-application:
+    image: my-application
+    volumes:
+      - ./aaaaaaaa:/usr/src/app/src/abc/def
 
 # Create a basic NGINX configuration file
 bash mollusk.sh nconf -c sample-app -s mudki.ps
