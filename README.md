@@ -2,7 +2,7 @@
 
 Setup my Docker environment using Mollusk
 
-```
+```sh
 mkdir docker && cd docker
 git clone https://github.com/TundraFizz/Mollusk .
 bash setup.sh
