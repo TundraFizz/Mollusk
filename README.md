@@ -26,7 +26,7 @@ nano docker-compose.yml
   my-application:
     image: my-application
     volumes:
-      - ./aaaaaaaa:/usr/src/app/src/abc/def
+      - ./logs:/usr/src/app/src/logs
 
 # Create a basic NGINX configuration file
 bash mollusk.sh nconf -c sample-app -s mudki.ps
