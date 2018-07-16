@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Creates a default template Docker compose file using mollusk.sh
+bash mollusk.sh compose
+
 # Disable SELinux
 sudo setenforce 0
 
@@ -20,7 +23,7 @@ sudo systemctl enable docker
 sudo systemctl start docker
 
 # Add Google's DNS to the Docker daemon; this allows Docker containers to connect to the internet
-sudo echo '{"dns": ["8.8.8.8", "8.8.4.4"]}' > /etc/docker/daemon.json
+echo '{"dns": ["8.8.8.8", "8.8.4.4"]}' | sudo tee --append /etc/docker/daemon.json > /dev/null
 
 # Add the user to the docker group and then reboot to apply the changes
 sudo usermod -aG docker $USER
