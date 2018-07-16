@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Creates a default template Docker compose file using mollusk.sh
+bash mollusk.sh compose
+
+# Initialize Docker swarm
+sudo docker swarm init
+
 # Disable SELinux
 sudo setenforce 0
 
