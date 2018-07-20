@@ -18,6 +18,7 @@ help_main(){
   echo "ssl     Create new SSL certificates"
   echo "nconf   Generate a basic NGINX config file"
   echo "renew   Renew SSL certificates"
+  echo "newdb   Creates a new MySQL database from an SQL file"
   echo "backup  Backup the database"
   echo "restore Restore the database from most recent backup"
   echo "compose Creates a default template Docker compose file"
@@ -92,6 +93,24 @@ help_restore(){
   echo "-b Bucket name"
   echo ""
   echo "Example: mollusk.sh restore -u root -p fizz -d my_sqldb -b tundra-backups"
+  echo ""
+  exit
+}
+
+help_new_database(){
+  echo "Usage: mollusk.sh newdb [PARAMETERS] [OPTIONS]"
+  echo ""
+  echo "[PARAMETERS]"
+  echo "-f Path to the SQL file that will be used to create the database"
+  echo ""
+  echo "[OPTIONS]"
+  echo "-n Name of the database. If omitted, this will be the filename"
+  echo "-s Name of MySQL Docker service. If omitted, this will default to mysql"
+  echo ""
+  echo "Example: mollusk.sh newdb -f my_db.sql"
+  echo "Example: mollusk.sh newdb -f prod.sql -n web_app"
+  echo "Example: mollusk.sh newdb -f db/template.sql -s dock-sql"
+  echo "Example: mollusk.sh newdb -f basic.sql -n web_app -s dock-sql"
   echo ""
   exit
 }
@@ -249,6 +268,12 @@ options_ssl(){
 
   generate_conf_part_2 "${domain_name}"
   restart_nginx
+}
+
+options_new_database(){
+  if [ "${#arguments[@]}" = 0 ]; then
+    help_ssl
+  fi
 }
 
 options_backup_or_restore(){
@@ -554,6 +579,10 @@ compose(){
   fi
 }
 
+new_database(){
+
+}
+
 main(){
 
   function="${arguments[0]}"
@@ -570,6 +599,10 @@ main(){
   elif [ "${function}" = "renew" ]; then
 
     renew_certificates
+
+  elif [ "${function}" = "newdb" ]; then
+
+    options_new_database
 
   elif [ "${function}" = "backup" ]; then
 
