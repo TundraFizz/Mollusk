@@ -15,12 +15,15 @@ Clone and build an example project
 # Download the application
 git clone https://github.com/TundraFizz/Docker-Sample-App
 
+# [Optional] Modify the config file if necessary
+nano Docker-Sample-App/config.json
+
 # Build the image
 docker build -t sample-app Docker-Sample-App
 
 # Modify the docker-compose.yml file to include your images
-# Note: volumes is optional, but the host folder must already exist
-#       the client folder will automatically be created in the container
+# - Volumes is optional, but the host folder must already exist,
+#   and the client folder will automatically be created in the container
 nano docker-compose.yml
 
   my-application:
@@ -30,6 +33,8 @@ nano docker-compose.yml
 
 # Create a basic NGINX configuration file
 bash mollusk.sh nconf -c sample-app -s mudki.ps
+
+# [Optional] Create a database if necessary
 
 # Deploy
 docker stack deploy -c docker-compose.yml sample
