@@ -272,8 +272,88 @@ options_ssl(){
 
 options_new_database(){
   if [ "${#arguments[@]}" = 0 ]; then
-    help_ssl
+    help_new_database
   fi
+
+  # echo "-f Path to the SQL file that will be used to create the database"
+  # echo "-n Name of the database. If omitted, this will be the filename"
+  # echo "-s Name of MySQL Docker service. If omitted, this will default to mysql"
+
+  filename=""
+  database_name=""
+  service_name="mysql"
+
+  for i in "${arguments[@]}"; do # Go through all user arguments
+    # If the argument starts with a dash, then set it as the current parameter/option
+    if [ "${i:0:1}" = "-" ]; then
+      current_param="${i}"
+
+    # Handle parameters and options
+    elif [ "${current_param}" = "-f" ]; then # Parameter: Filename
+      filename="${i}"
+    elif [ "${current_param}" = "-n" ]; then # Option: Database name
+      database_name="${i}"
+    elif [ "${current_param}" = "-s" ]; then # Option: Service name
+      service_name="${i}"
+
+    # Error
+    else
+      echo "Error: Unrecognized parameter: ${current_param}"
+      exit
+    fi
+  done
+
+  # Check if mandatory parameters have been supplied
+  failed=""
+
+  if [ "${filename}" = "" ]; then
+    echo "Error: Missing parameter: -f"
+    failed="true"
+  fi
+
+  if [ "${failed}" = "true" ]; then
+    exit
+  fi
+
+  if [ ! -f ${filename} ]; then
+    echo "File not found!"
+    return
+  fi
+
+  # If the user didn't supply a database name, set it to the default of the filename
+  if [ "${database_name}" = "" ]; then
+    database_name=$(cut -d'.' -f1 <<< ${filename})
+  fi
+
+  # Save the container that has the word "mysql" in its name as a variable
+  mysql_container=$(docker container ls | grep mysql | grep -Eo '^[^ ]+')
+
+  db_username="root"
+  db_password="fizz"
+
+  # Copy the .sql file into the container
+  docker cp "${filename}" "${mysql_container}":/"${filename}"
+
+  # IS THIS NEEDED???????????????????
+  # docker exec "${mysql_container}" bash -c "echo '[client]'                 > config.cnf"
+  # docker exec "${mysql_container}" bash -c "echo 'host=localhost'          >> config.cnf"
+  # docker exec "${mysql_container}" bash -c "echo 'user=${db_username}'     >> config.cnf"
+  # docker exec "${mysql_container}" bash -c "echo 'password=${db_password}' >> config.cnf"
+
+  # Creates the database
+  command="mysql -u root -p${db_password} -e 'create database ${database_name}'"
+  docker exec "${mysql_container}" bash -c "${command}"
+  echo "> ${command}"
+
+  # Imports data from the .sql file into the database
+  command="mysql -u root -p${db_password} ${database_name} < ${filename}"
+  echo "> ${command}"
+  docker exec "${mysql_container}" bash -c "${command}"
+
+  # Remove the .sql file from the container
+  command="rm /${filename}"
+  echo "> ${command}"
+  docker exec "${mysql_container}" bash -c "${command}"
 }
 
 options_backup_or_restore(){
@@ -488,8 +568,8 @@ execute_restore(){
   docker exec "${mysql_container}" bash -c "mysql -u ${db_username} -p${db_password} -e 'create database ${db_database}'"
 
   # Restore from backup
-  echo "> gunzip < ${db_filename} | mysql -u ${db_username} -p${db_password} ${db_database}"
-  docker exec "${mysql_container}" bash -c "gunzip < ${db_filename} | mysql -u ${db_username} -p${db_password} ${db_database}"
+  echo "> ${command}"
+  docker exec "${mysql_container}" bash -c "${command}"
 
   # Remove the backup file on the container
   echo "> rm ${db_filename}"
@@ -577,10 +657,6 @@ compose(){
   if [ ! -d nginx_conf.d ]; then
     mkdir nginx_conf.d
   fi
-}
-
-new_database(){
-
 }
 
 main(){
