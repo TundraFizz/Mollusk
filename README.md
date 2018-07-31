@@ -22,7 +22,7 @@ git clone https://github.com/TundraFizz/REPO_NAME                  # Clone the r
 docker build -t SERVICE_NAME REPO_NAME                             # Build the image
 bash mollusk.sh nconf -c SERVICE_NAME -s DOMAIN_NAME               # Create a basic NGINX configuration file
 nano docker-compose.yml                                            # Add the service to the docker-compose.yml
-nano REPO_NAME/config.json                                         # [Optional] Configure settings
+nano REPO_NAME/config.yml                                          # [Optional] Configure settings
 bash mollusk.sh newdb -f DB_FILE.sql -p DB_PASSWORD                # [Optional] Create a database from an SQL file
 docker stack deploy -c docker-compose.yml STACK_NAME               # Deploy the Docker stack
 bash mollusk.sh ssl -d DOMAIN_NAME -se SERVICE_NAME -st STACK_NAME # [Optional] Create an SSL certificate
