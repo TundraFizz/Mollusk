@@ -6,39 +6,37 @@ Setup my Docker environment using Mollusk
 mkdir docker && cd docker
 git clone https://github.com/TundraFizz/Mollusk .
 bash setup.sh
+```
+
+After the system restarts from running `bash setup.sh` cd back into the docker folder and run the following commands
+
+```sh
 docker swarm init
+bash mollusk.sh nconf -c phpmyadmin -s ip -p 9000
 ```
 
 Clone and build an example project
 
 ```sh
-# Download the application
-git clone https://github.com/TundraFizz/Docker-Sample-App
+git clone https://github.com/TundraFizz/REPO_NAME                  # Clone the repository
+nano REPO_NAME/config.json                                         # [Optional] Configure settings
+docker build -t SERVICE_NAME REPO_NAME                             # Build the image
+nano docker-compose.yml                                            # Add the service to the docker-compose.yml
+bash mollusk.sh nconf -c SERVICE_NAME -s DOMAIN_NAME               # Create a basic NGINX configuration file
+bash mollusk.sh newdb -f DB_FILE.sql -p DB_PASSWORD                # [Optional] Create a database from an SQL file
+docker stack deploy -c docker-compose.yml STACK_NAME               # Deploy the Docker stack
+bash mollusk.sh ssl -d DOMAIN_NAME -se SERVICE_NAME -st STACK_NAME # [Optional] Create an SSL certificate
+```
 
-# [Optional] Modify the config file if necessary
-nano Docker-Sample-App/config.json
+Templates for `nano docker-compose.yml`
 
-# Build the image
-docker build -t sample-app Docker-Sample-App
-
-# Modify the docker-compose.yml file to include your images
-# - Volumes is optional, but the host folder must already exist,
-#   and the client folder will automatically be created in the container
-nano docker-compose.yml
-
-  my-application:
-    image: my-application
+```sh
+  IMAGE-NAME:
+    image: IMAGE-NAME
+```
+```sh
+  IMAGE-NAME:
+    image: IMAGE-NAME
     volumes:
       - ./logs:/usr/src/app/src/logs
-
-# Create a basic NGINX configuration file
-bash mollusk.sh nconf -c sample-app -s mudki.ps
-
-# [Optional] Create a database if necessary
-
-# Deploy
-docker stack deploy -c docker-compose.yml sample
-
-# [Optional] Create an SSL certificate
-bash mollusk.sh ssl -d mudki.ps -se sample-app -st sample -s
 ```
