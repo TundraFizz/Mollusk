@@ -15,9 +15,10 @@ help_main(){
   echo "Usage: mollusk.sh [FUNCTION]"
   echo ""
   echo "[FUNCTION]"
-  echo "ssl     Create new SSL certificates"
   echo "nconf   Generate a basic NGINX config file"
+  echo "ssl     Create new SSL certificates"
   echo "renew   Renew SSL certificates"
+  echo "newdb   Creates a new MySQL database from an SQL file"
   echo "backup  Backup the database"
   echo "restore Restore the database from most recent backup"
   echo "compose Creates a default template Docker compose file"
@@ -92,6 +93,26 @@ help_restore(){
   echo "-b Bucket name"
   echo ""
   echo "Example: mollusk.sh restore -u root -p fizz -d my_sqldb -b tundra-backups"
+  echo ""
+  exit
+}
+
+help_new_database(){
+  echo "Usage: mollusk.sh newdb [PARAMETERS] [OPTIONS]"
+  echo ""
+  echo "[PARAMETERS]"
+  echo "-f Path to the SQL file that will be used to create the database"
+  echo "-p Password to the database"
+  echo ""
+  echo "[OPTIONS]"
+  echo "-u Username to the database. Default is \"root\""
+  echo "-n Name of the database. Default is the filename"
+  echo "-s Name of MySQL Docker service. Default is \"mysql\""
+  echo ""
+  echo "Example: mollusk.sh newdb -f my_db.sql -p fizz"
+  echo "Example: mollusk.sh newdb -f prod.sql -p fizz -n web_app"
+  echo "Example: mollusk.sh newdb -f db/template.sql -p fizz -s dock-sql"
+  echo "Example: mollusk.sh newdb -f basic.sql -u admin -p fizz -n web_app -s dock-sql"
   echo ""
   exit
 }
@@ -249,6 +270,95 @@ options_ssl(){
 
   generate_conf_part_2 "${domain_name}"
   restart_nginx
+}
+
+options_new_database(){
+  if [ "${#arguments[@]}" = 0 ]; then
+    help_new_database
+  fi
+
+  # echo "-f Path to the SQL file that will be used to create the database"
+  # echo "-n Name of the database. If omitted, this will be the filename"
+  # echo "-s Name of MySQL Docker service. If omitted, this will default to mysql"
+
+  filename=""
+  db_password=""
+  db_username="root"
+  db_name=""
+  service_name="mysql"
+
+  for i in "${arguments[@]}"; do # Go through all user arguments
+    # If the argument starts with a dash, then set it as the current parameter/option
+    if [ "${i:0:1}" = "-" ]; then
+      current_param="${i}"
+
+    # Handle parameters and options
+    elif [ "${current_param}" = "-f" ]; then # Parameter: Filename
+      filename="${i}"
+    elif [ "${current_param}" = "-p" ]; then # Parameter: Database password
+      db_password="${i}"
+    elif [ "${current_param}" = "-u" ]; then # Option: Database username
+      db_username="${i}"
+    elif [ "${current_param}" = "-n" ]; then # Option: Database name
+      db_name="${i}"
+    elif [ "${current_param}" = "-s" ]; then # Option: Service name
+      service_name="${i}"
+
+    # Error
+    else
+      echo "Error: Unrecognized parameter: ${current_param}"
+      exit
+    fi
+  done
+
+  # Check if mandatory parameters have been supplied
+  failed=""
+
+  if [ "${filename}" = "" ]; then
+    echo "Error: Missing parameter: -f"
+    failed="true"
+  fi
+
+  if [ "${db_password}" = "" ]; then
+    echo "Error: Missing parameter: -p"
+    failed="true"
+  fi
+
+  if [ "${failed}" = "true" ]; then
+    exit
+  fi
+
+  # Quit if the user specified a file that doesn't exist
+  if [ ! -f ${filename} ]; then
+    echo "File not found!"
+    return
+  fi
+
+  # If the user didn't supply a database name, set it to the default of the filename
+  if [ "${db_name}" = "" ]; then
+    db_name=$(cut -d'.' -f1 <<< ${filename})
+  fi
+
+  # Store the container ID that has the word of service_name in its name; default is "mysql"
+  mysql_container=$(docker container ls | grep "${service_name}" | grep -Eo '^[^ ]+')
+
+  # Copy the .sql file into the container
+  docker cp "${filename}" "${mysql_container}":/"${filename}"
+
+  # Create the database
+  command="mysql -u root -p${db_password} -e 'create database ${db_name}'"
+  docker exec "${mysql_container}" bash -c "${command}"
+  echo "> ${command}"
+
+  # Import data from the .sql file into the database
+  command="mysql -u root -p${db_password} ${db_name} < ${filename}"
+  echo "> ${command}"
+  docker exec "${mysql_container}" bash -c "${command}"
+
+  # Remove the .sql file from the container
+  command="rm /${filename}"
+  echo "> ${command}"
+  docker exec "${mysql_container}" bash -c "${command}"
 }
 
 options_backup_or_restore(){
@@ -463,8 +573,8 @@ execute_restore(){
   docker exec "${mysql_container}" bash -c "mysql -u ${db_username} -p${db_password} -e 'create database ${db_database}'"
 
   # Restore from backup
-  echo "> gunzip < ${db_filename} | mysql -u ${db_username} -p${db_password} ${db_database}"
-  docker exec "${mysql_container}" bash -c "gunzip < ${db_filename} | mysql -u ${db_username} -p${db_password} ${db_database}"
+  echo "> ${command}"
+  docker exec "${mysql_container}" bash -c "${command}"
 
   # Remove the backup file on the container
   echo "> rm ${db_filename}"
@@ -570,6 +680,10 @@ main(){
   elif [ "${function}" = "renew" ]; then
 
     renew_certificates
+
+  elif [ "${function}" = "newdb" ]; then
+
+    options_new_database
 
   elif [ "${function}" = "backup" ]; then
 
