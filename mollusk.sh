@@ -102,15 +102,17 @@ help_new_database(){
   echo ""
   echo "[PARAMETERS]"
   echo "-f Path to the SQL file that will be used to create the database"
+  echo "-p Password to the database"
   echo ""
   echo "[OPTIONS]"
-  echo "-n Name of the database. If omitted, this will be the filename"
-  echo "-s Name of MySQL Docker service. If omitted, this will default to mysql"
+  echo "-u Username to the database. Default is \"root\""
+  echo "-n Name of the database. Default is the filename"
+  echo "-s Name of MySQL Docker service. Default is \"mysql\""
   echo ""
-  echo "Example: mollusk.sh newdb -f my_db.sql"
-  echo "Example: mollusk.sh newdb -f prod.sql -n web_app"
-  echo "Example: mollusk.sh newdb -f db/template.sql -s dock-sql"
-  echo "Example: mollusk.sh newdb -f basic.sql -n web_app -s dock-sql"
+  echo "Example: mollusk.sh newdb -f my_db.sql -p fizz"
+  echo "Example: mollusk.sh newdb -f prod.sql -p fizz -n web_app"
+  echo "Example: mollusk.sh newdb -f db/template.sql -p fizz -s dock-sql"
+  echo "Example: mollusk.sh newdb -f basic.sql -u admin -p fizz -n web_app -s dock-sql"
   echo ""
   exit
 }
@@ -280,7 +282,9 @@ options_new_database(){
   # echo "-s Name of MySQL Docker service. If omitted, this will default to mysql"
 
   filename=""
-  database_name=""
+  db_password=""
+  db_username="root"
+  db_name=""
   service_name="mysql"
 
   for i in "${arguments[@]}"; do # Go through all user arguments
@@ -291,8 +295,12 @@ options_new_database(){
     # Handle parameters and options
     elif [ "${current_param}" = "-f" ]; then # Parameter: Filename
       filename="${i}"
+    elif [ "${current_param}" = "-p" ]; then # Parameter: Database password
+      db_password="${i}"
+    elif [ "${current_param}" = "-u" ]; then # Option: Database username
+      db_username="${i}"
     elif [ "${current_param}" = "-n" ]; then # Option: Database name
-      database_name="${i}"
+      db_name="${i}"
     elif [ "${current_param}" = "-s" ]; then # Option: Service name
       service_name="${i}"
 
@@ -311,42 +319,39 @@ options_new_database(){
     failed="true"
   fi
 
+  if [ "${db_password}" = "" ]; then
+    echo "Error: Missing parameter: -p"
+    failed="true"
+  fi
+
   if [ "${failed}" = "true" ]; then
     exit
   fi
 
+  # Quit if the user specified a file that doesn't exist
   if [ ! -f ${filename} ]; then
     echo "File not found!"
     return
   fi
 
   # If the user didn't supply a database name, set it to the default of the filename
-  if [ "${database_name}" = "" ]; then
-    database_name=$(cut -d'.' -f1 <<< ${filename})
+  if [ "${db_name}" = "" ]; then
+    db_name=$(cut -d'.' -f1 <<< ${filename})
   fi
 
-  # Save the container that has the word "mysql" in its name as a variable
-  mysql_container=$(docker container ls | grep mysql | grep -Eo '^[^ ]+')
-
-  db_username="root"
-  db_password="fizz"
+  # Store the container ID that has the word of service_name in its name; default is "mysql"
+  mysql_container=$(docker container ls | grep "${service_name}" | grep -Eo '^[^ ]+')
 
   # Copy the .sql file into the container
   docker cp "${filename}" "${mysql_container}":/"${filename}"
 
-  # IS THIS NEEDED???????????????????
-  # docker exec "${mysql_container}" bash -c "echo '[client]'                 > config.cnf"
-  # docker exec "${mysql_container}" bash -c "echo 'host=localhost'          >> config.cnf"
-  # docker exec "${mysql_container}" bash -c "echo 'user=${db_username}'     >> config.cnf"
-  # docker exec "${mysql_container}" bash -c "echo 'password=${db_password}' >> config.cnf"
-
-  # Creates the database
-  command="mysql -u root -p${db_password} -e 'create database ${database_name}'"
+  # Create the database
+  command="mysql -u root -p${db_password} -e 'create database ${db_name}'"
   docker exec "${mysql_container}" bash -c "${command}"
   echo "> ${command}"
 
-  # Imports data from the .sql file into the database
-  command="mysql -u root -p${db_password} ${database_name} < ${filename}"
+  # Import data from the .sql file into the database
+  command="mysql -u root -p${db_password} ${db_name} < ${filename}"
   echo "> ${command}"
   docker exec "${mysql_container}" bash -c "${command}"
 
