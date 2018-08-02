@@ -15,10 +15,20 @@ docker swarm init
 bash mollusk.sh nconf -c phpmyadmin -s ip -p 9000
 ```
 
-Clone and build an example project
+---
+
+Clone and build an example project. For this example:
+
+```
+REPO_URL     | https://github.com/TundraFizz/Docker-Sample-App
+REPO_NAME    | Docker-Sample-App
+DOMAIN_NAME  | mudki.ps
+SERVICE_NAME | my-app
+STACK_NAME   | my-stack
+```
 
 ```sh
-git clone https://github.com/TundraFizz/REPO_NAME                  # Clone the repository
+git clone REPO_URL                                                 # Clone the repository
 docker build -t SERVICE_NAME REPO_NAME                             # Build the image
 bash mollusk.sh nconf -c SERVICE_NAME -s DOMAIN_NAME               # Create a basic NGINX configuration file
 nano docker-compose.yml                                            # Add the service to the docker-compose.yml
