@@ -430,8 +430,12 @@ options_new_database(){
   # Store the container ID that has the word of service_name in its name; default is "mysql"
   mysql_container=$(docker container ls | grep "${service_name}" | grep -Eo '^[^ ]+')
 
+  # Fix this!
+  just_the_filename="coss.sql"
+  db_name="coss"
+
   # Copy the .sql file into the container
-  docker cp "${filename}" "${mysql_container}":/"${filename}"
+  docker cp "${filename}" "${mysql_container}":/"${just_the_filename}"
 
   # Create the database
   command="mysql -u root -p${db_password} -e 'create database ${db_name}'"
@@ -439,12 +443,12 @@ options_new_database(){
   echo "> ${command}"
 
   # Import data from the .sql file into the database
-  command="mysql -u root -p${db_password} ${db_name} < ${filename}"
+  command="mysql -u root -p${db_password} ${db_name} < ${just_the_filename}"
   echo "> ${command}"
   docker exec "${mysql_container}" bash -c "${command}"
 
   # Remove the .sql file from the container
-  command="rm /${filename}"
+  command="rm /${just_the_filename}"
   echo "> ${command}"
   docker exec "${mysql_container}" bash -c "${command}"
 }
