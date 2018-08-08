@@ -29,6 +29,19 @@ help_main(){
   exit
 }
 
+help_wizard(){
+  echo "Usage: mollusk.sh wizard [PARAMETERS]"
+  echo ""
+  echo "[PARAMETERS]"
+  echo "-r Repository url"
+  echo "-s Service name"
+  echo "-d Domain name"
+  echo ""
+  echo "Example: mollusk.sh wizard -r https://github.com/TundraFizz/Docker-Sample-App -s my-app -d mudki.ps"
+  echo ""
+  exit
+}
+
 help_nconf(){
   echo "Usage: mollusk.sh nconf [PARAMETERS] [OPTIONS]"
   echo ""
@@ -115,6 +128,81 @@ help_new_database(){
   echo "Example: mollusk.sh newdb -f basic.sql -u admin -p fizz -n web_app -s dock-sql"
   echo ""
   exit
+}
+
+options_wizard(){
+  if [ ${#arguments[@]} = 0 ]; then
+    help_wizard
+  fi
+
+  repo_url=""
+  service_name=""
+  domain_name=""
+
+  for i in "${arguments[@]}"; do # Go through all user arguments
+
+    # If the argument starts with a dash, then set it as the current parameter
+    if [ "${i:0:1}" = "-" ]; then
+      current_param="${i}"
+    elif [ "${current_param}" = "-r" ]; then
+      repo_url="${i}"
+    elif [ "${current_param}" = "-s" ]; then
+      service_name="${i}"
+    elif [ "${current_param}" = "-d" ]; then
+      domain_name="${i}"
+    else
+      echo "ERROR! Unrecognized parameter: ${current_param}"
+    fi
+  done
+
+  # Check if mandatory parameters have been supplied
+  failed=""
+
+  if [ "${repo_url}" = "" ]; then
+    echo "Error: Missing parameter: -r"
+    failed="true"
+  fi
+
+  if [ "${service_name}" = "" ]; then
+    echo "Error: Missing parameter: -s"
+    failed="true"
+  fi
+
+  if [ "${domain_name}" = "" ]; then
+    echo "Error: Missing parameter: -d"
+    failed="true"
+  fi
+
+  if [ "${failed}" = "true" ]; then
+    exit
+  fi
+
+  repo_name="Docker-Sample-App"
+  stack_name="my-stack"
+
+  # Clone the repository
+  git clone "${repo_url}"
+
+  # Build the image
+  docker build -t "${service_name}" "${repo_name}"
+
+  # Create a basic NGINX configuration file
+  bash mollusk.sh nconf -c "${service_name}" -s "${domain_name}"
+
+  # Add the service to the docker-compose.yml
+  nano docker-compose.yml
+
+  # [Optional] Configure settings
+  # nano REPO_NAME/config.yml
+
+  # [Optional] Create a database from an SQL file
+  # bash mollusk.sh newdb -f DB_FILE.sql -p DB_PASSWORD
+
+  # Deploy the Docker stack
+  docker stack deploy -c docker-compose.yml "${stack_name}"
+
+  # [Optional] Create an SSL certificate
+  # bash mollusk.sh ssl -d DOMAIN_NAME -se SERVICE_NAME -st STACK_NAME
 }
 
 options_nconf(){
@@ -342,8 +430,12 @@ options_new_database(){
   # Store the container ID that has the word of service_name in its name; default is "mysql"
   mysql_container=$(docker container ls | grep "${service_name}" | grep -Eo '^[^ ]+')
 
+  # Fix this!
+  just_the_filename="coss.sql"
+  db_name="coss"
+
   # Copy the .sql file into the container
-  docker cp "${filename}" "${mysql_container}":/"${filename}"
+  docker cp "${filename}" "${mysql_container}":/"${just_the_filename}"
 
   # Create the database
   command="mysql -u root -p${db_password} -e 'create database ${db_name}'"
@@ -351,12 +443,12 @@ options_new_database(){
   echo "> ${command}"
 
   # Import data from the .sql file into the database
-  command="mysql -u root -p${db_password} ${db_name} < ${filename}"
+  command="mysql -u root -p${db_password} ${db_name} < ${just_the_filename}"
   echo "> ${command}"
   docker exec "${mysql_container}" bash -c "${command}"
 
   # Remove the .sql file from the container
-  command="rm /${filename}"
+  command="rm /${just_the_filename}"
   echo "> ${command}"
   docker exec "${mysql_container}" bash -c "${command}"
 }
@@ -669,7 +761,11 @@ main(){
   function="${arguments[0]}"
   arguments=("${arguments[@]:1}") # Remove the function (pop from font)
 
-  if [ "${function}" = "nconf" ]; then
+  if [ "${function}" = "wizard" ]; then
+
+    options_wizard
+
+  elif [ "${function}" = "nconf" ]; then
 
     options_nconf
 
